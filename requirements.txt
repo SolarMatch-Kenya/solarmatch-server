@@ -1,8 +1,4 @@
-flask
-flask_sqlalchemy
-flask_migrate
-flask_cors
-python-dotenv
-marshmallow
-marshmallow-sqlalchemy
-gunicorn
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
