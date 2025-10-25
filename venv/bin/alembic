@@ -1,4 +1,4 @@
-#!/home/james/SolarMatch-Kenya/solarmatch-server/venv/bin/python3
+#!/home/ayubfoks/Development/code/code_challenge/SolarMatch/solarmatch-server/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
