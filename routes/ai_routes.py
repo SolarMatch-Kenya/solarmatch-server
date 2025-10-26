@@ -1,13 +1,14 @@
 import os
+import json
 import cloudinary.uploader
-from flask import request, jsonify
+from flask import request, jsonify, Blueprint
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
-from ..models import AnalysisRequest, AnalysisResult
-from ..sevices.gemini_service import get_solar_analysis, get_ar_layout
+from models.analysis import AnalysisRequest, AnalysisResult
+from sevices.gemini_service import get_solar_analysis, get_ar_layout
 
 # Configure Cloudinary (it reads from CLOUDINARY_URL in .env)
-import .cloudinary
+import cloudinary
 
 # ... in your main app factory ...
 # cloudinary.config(
@@ -17,13 +18,16 @@ import .cloudinary
 # )
 # Or just let it use the URL
 
-@main.route('/api/analysis/submit', methods=['POST'])
+# --- Define the Blueprint ---
+ai_bp = Blueprint('ai', __name__) # <-- Create the blueprint
+
+# --- Use the Blueprint for routing ---
+@ai_bp.route('/analysis/submit', methods=['POST']) # <-- Changed from @main.route
 @jwt_required()
 def submit_analysis():
     current_user_id = get_jwt_identity()
     
     # 1. Get data from the form
-    # Note: FormData sends files and text separately
     form_data = request.form
     roof_image_file = request.files.get('roofImage')
 
@@ -53,10 +57,7 @@ def submit_analysis():
     db.session.add(new_request)
     db.session.commit()
     
-    # --- 4. Run AI Analysis (This should be an async task!) ---
-    # For simplicity, we run it synchronously.
-    # In production, use Celery or RQ.
-    
+    # --- 4. Run AI Analysis (Async task recommended) ---
     try:
         # Get text-based analysis
         gemini_data = get_solar_analysis(
@@ -94,11 +95,15 @@ def submit_analysis():
 
     except Exception as e:
         # If AI fails, update status
-        new_request.result = AnalysisResult(request_id=new_request.id, status='FAILED')
+        # Check if result already exists before creating a new one
+        if not new_request.result:
+             new_request.result = AnalysisResult(request_id=new_request.id, status='FAILED')
+        else:
+             new_request.result.status = 'FAILED'
         db.session.commit()
         return jsonify({"error": f"AI analysis failed: {e}"}), 500
 
-@main.route('/api/analysis/latest', methods=['GET'])
+@ai_bp.route('/analysis/latest', methods=['GET']) # <-- Changed from @main.route
 @jwt_required()
 def get_latest_analysis():
     """
@@ -132,6 +137,7 @@ def get_latest_analysis():
             "annual_savings_ksh": result.annual_savings_ksh,
             "system_size_kw": result.system_size_kw,
             "payback_period_years": result.payback_period_years,
-            "panel_layout": json.loads(result.panel_layout_json) # Parse JSON string back to object
+            # Parse JSON string back to object
+            "panel_layout": json.loads(result.panel_layout_json) if result.panel_layout_json else None 
         }
     }), 200
