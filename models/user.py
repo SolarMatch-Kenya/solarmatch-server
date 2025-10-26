@@ -12,6 +12,9 @@ class User(db.Model):
     user_name = db.Column(db.String, unique=True, nullable=False)
     role = db.Column(db.String, default="customer")    # can be a customer, or installer
     county = db.Column(db.String(100), nullable=True)
+    password_reset_required = db.Column(db.Boolean, default=False, nullable=False)
+    installer_category = db.Column(db.String(100), nullable=True) # e.g., Residential, Commercial
+
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
