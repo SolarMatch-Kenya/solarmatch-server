@@ -7,6 +7,7 @@ from sqlalchemy import or_ # <-- 1. Import 'or_' for searching
 import random
 from utils.helpers import generate_username
 from extensions import bcrypt
+from models.content import Faq, SustainabilityTip, AboutContent
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -219,3 +220,148 @@ def delete_installer(user_id):
     db.session.delete(user_to_delete)
     db.session.commit()
     return jsonify({"message": "Installer deleted successfully"}), 200
+
+
+# --- CONTENT MANAGEMENT (NEW) ---
+
+# --- FAQs ---
+@admin_bp.route('/faqs', methods=['GET'])
+@jwt_required()
+def get_faqs():
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin': return jsonify({"error": "Admin access required"}), 403
+    
+    faqs = Faq.query.order_by(Faq.created_at).all()
+    return jsonify({"faqs": [{"id": f.id, "question": f.question, "answer": f.answer} for f in faqs]}), 200
+
+@admin_bp.route('/faqs', methods=['POST'])
+@jwt_required()
+def add_faq():
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin': return jsonify({"error": "Admin access required"}), 403
+    
+    data = request.get_json()
+    if not data or 'question' not in data or 'answer' not in data:
+        return jsonify({"error": "Question and answer are required"}), 400
+        
+    new_faq = Faq(question=data['question'], answer=data['answer'])
+    db.session.add(new_faq)
+    db.session.commit()
+    return jsonify({"id": new_faq.id, "question": new_faq.question, "answer": new_faq.answer}), 201
+
+@admin_bp.route('/faqs/<int:faq_id>', methods=['PUT'])
+@jwt_required()
+def update_faq(faq_id):
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin': return jsonify({"error": "Admin access required"}), 403
+    
+    faq = Faq.query.get(faq_id)
+    if not faq: return jsonify({"error": "FAQ not found"}), 404
+    
+    data = request.get_json()
+    if not data or ('question' not in data and 'answer' not in data):
+        return jsonify({"error": "Question or answer is required"}), 400
+        
+    if 'question' in data: faq.question = data['question']
+    if 'answer' in data: faq.answer = data['answer']
+    db.session.commit()
+    return jsonify({"id": faq.id, "question": faq.question, "answer": faq.answer}), 200
+
+@admin_bp.route('/faqs/<int:faq_id>', methods=['DELETE'])
+@jwt_required()
+def delete_faq(faq_id):
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin': return jsonify({"error": "Admin access required"}), 403
+    
+    faq = Faq.query.get(faq_id)
+    if not faq: return jsonify({"error": "FAQ not found"}), 404
+        
+    db.session.delete(faq)
+    db.session.commit()
+    return jsonify({"message": "FAQ deleted"}), 200
+
+# --- Sustainability Tips --- (Similar structure to FAQs)
+@admin_bp.route('/tips', methods=['GET'])
+@jwt_required()
+def get_tips():
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin': return jsonify({"error": "Admin access required"}), 403
+    
+    tips = SustainabilityTip.query.order_by(SustainabilityTip.created_at).all()
+    return jsonify({"tips": [{"id": t.id, "title": t.title, "description": t.description} for t in tips]}), 200
+
+@admin_bp.route('/tips', methods=['POST'])
+@jwt_required()
+def add_tip():
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin': return jsonify({"error": "Admin access required"}), 403
+    
+    data = request.get_json()
+    if not data or 'title' not in data or 'description' not in data:
+        return jsonify({"error": "Title and description are required"}), 400
+        
+    new_tip = SustainabilityTip(title=data['title'], description=data['description'])
+    db.session.add(new_tip)
+    db.session.commit()
+    return jsonify({"id": new_tip.id, "title": new_tip.title, "description": new_tip.description}), 201
+    
+@admin_bp.route('/tips/<int:tip_id>', methods=['PUT'])
+@jwt_required()
+def update_tip(tip_id):
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin': return jsonify({"error": "Admin access required"}), 403
+    
+    tip = SustainabilityTip.query.get(tip_id)
+    if not tip: return jsonify({"error": "Tip not found"}), 404
+    
+    data = request.get_json()
+    if not data or ('title' not in data and 'description' not in data):
+        return jsonify({"error": "Title or description is required"}), 400
+        
+    if 'title' in data: tip.title = data['title']
+    if 'description' in data: tip.description = data['description']
+    db.session.commit()
+    return jsonify({"id": tip.id, "title": tip.title, "description": tip.description}), 200
+
+@admin_bp.route('/tips/<int:tip_id>', methods=['DELETE'])
+@jwt_required()
+def delete_tip(tip_id):
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin': return jsonify({"error": "Admin access required"}), 403
+    
+    tip = SustainabilityTip.query.get(tip_id)
+    if not tip: return jsonify({"error": "Tip not found"}), 404
+        
+    db.session.delete(tip)
+    db.session.commit()
+    return jsonify({"message": "Tip deleted"}), 200
+
+# --- About Page Content ---
+@admin_bp.route('/about', methods=['GET'])
+@jwt_required() # Technically not needed if About page is public, but good practice for admin edit
+def get_about_content():
+    # Find the content, or create it if it doesn't exist
+    content = AboutContent.query.get(1)
+    if not content:
+        content = AboutContent(id=1, mission="", vision="")
+        db.session.add(content)
+        db.session.commit()
+    return jsonify({"mission": content.mission, "vision": content.vision}), 200
+
+@admin_bp.route('/about', methods=['PUT'])
+@jwt_required()
+def update_about_content():
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin': return jsonify({"error": "Admin access required"}), 403
+    
+    content = AboutContent.query.get(1)
+    if not content: return jsonify({"error": "About content not found"}), 404 # Should not happen
+    
+    data = request.get_json()
+    if not data or ('mission' not in data and 'vision' not in data):
+         return jsonify({"error": "Mission or vision content is required"}), 400
+         
+    if 'mission' in data: content.mission = data['mission']
+    if 'vision' in data: content.vision = data['vision']
+    db.session.commit()
+    return jsonify({"mission": content.mission, "vision": content.vision}), 200
