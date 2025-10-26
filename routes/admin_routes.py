@@ -8,6 +8,7 @@ import random
 from utils.helpers import generate_username
 from extensions import bcrypt
 from models.content import Faq, SustainabilityTip, AboutContent
+from models.analysis import AnalysisRequest
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -365,3 +366,61 @@ def update_about_content():
     if 'vision' in data: content.vision = data['vision']
     db.session.commit()
     return jsonify({"mission": content.mission, "vision": content.vision}), 200
+
+
+# --- ADMIN OVERVIEW STATS (NEW) ---
+@admin_bp.route('/stats', methods=['GET'])
+@jwt_required()
+def get_admin_stats():
+    admin_user = User.query.get(get_jwt_identity())
+    if not admin_user or admin_user.role != 'admin':
+        return jsonify({"error": "Admin access required"}), 403
+
+    try:
+        # --- CALCULATE STATS (Replace with real queries) ---
+
+        # Total Users (Customers + Installers)
+        total_users = User.query.filter(User.role.in_(['customer', 'installer'])).count()
+        # You'd compare this to the count from last month for the percentage change
+
+        # Solar Analyses
+        total_analyses = AnalysisRequest.query.count()
+        # Compare to last month
+
+        # CO2 Saved - This is tricky and depends on how you estimate savings.
+        # Placeholder calculation: Assume 0.5 tons saved per analysis?
+        co2_saved = total_analyses * 0.5
+        # Compare to last month
+
+        # User Growth (Placeholder - you'd query users created in the last 30 days)
+        growth_data = {
+            "labels": ["Week 1", "Week 2", "Week 3", "Week 4"],
+            "data": [50, 120, 80, 150] # Example: New users per week
+        }
+
+        # Recent Activity (Placeholder - you'd query recent events/logs)
+        recent_activity = [
+            {"type": "user_registered", "text": "John Doe", "time_ago": "2 min ago"},
+            {"type": "installer_approved", "text": "GreenLeaf Solar", "time_ago": "1 hour ago"},
+            {"type": "analysis_complete", "text": "User #1138", "time_ago": "3 hours ago"},
+            {"type": "user_registered", "text": "Jane Smith", "time_ago": "5 hours ago"},
+        ]
+
+        # --- Return data ---
+        return jsonify({
+            "stats": {
+                "total_users": total_users,
+                "users_change": "+5.2%", # Placeholder
+                "total_analyses": total_analyses,
+                "analyses_change": "+3.8%", # Placeholder
+                "co2_saved": round(co2_saved, 2),
+                "co2_change": "+7.1%" # Placeholder
+            },
+            "growth_data": growth_data,
+            "recent_activity": recent_activity
+        }), 200
+
+    except Exception as e:
+        # Log the full error for debugging
+        # current_app.logger.error(f"Error fetching admin stats: {e}", exc_info=True)
+        return jsonify({"error": f"Failed to fetch stats: {e}"}), 500
