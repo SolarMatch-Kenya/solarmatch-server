@@ -5,27 +5,11 @@ from models.user import User
 from models.login_code import LoginCode
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from datetime import datetime, timedelta, timezone
-import random, re
+from utils.helpers import generate_username
+import random
 
 auth_bp = Blueprint("auth", __name__)
 api = Api(auth_bp)
-
-# --- Helper Functions ---
-def generate_username(full_name, role):
-    """Generate a friendly, role-based username."""
-    first_name = re.sub(r'[^A-Za-z]', '', full_name.split()[0].capitalize())  # clean + capitalize
-    random_digits = random.randint(1000, 9999)
-
-    if role == "customer":
-        prefix = "CUS"
-    elif role == "installer":
-        prefix = "INS"
-    elif role == "admin":
-        prefix = "ADM"
-    else:
-        prefix = "USR"
-
-    return f"{prefix}-{first_name}-{random_digits}"
 
 # --- Constants ---
 ADMIN_EMAILS = ["admin@solarmatch.co.ke", "trish@solarmatch.co.ke"]  # whitelist your admin emails
