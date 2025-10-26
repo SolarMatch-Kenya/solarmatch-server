@@ -3,13 +3,13 @@ from flask_restful import Api
 from extensions import db, migrate
 from flask_cors import CORS
 from config import Config
-from extensions import db, migrate, bcrypt, jwt
-
+from extensions import db, migrate, bcrypt, jwt, mail
 from routes.ai_routes import ai_bp
 from routes.auth_routes import auth_bp
 from routes.admin_routes import admin_bp
 from routes.password_routes import password_bp
 from routes import HelloResource
+
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -21,6 +21,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     bcrypt.init_app(app)
     jwt.init_app(app)
+    mail.init_app(app)
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api")
