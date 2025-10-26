@@ -1,7 +1,8 @@
 import os
 import json
 import cloudinary.uploader
-from flask import request, jsonify, Blueprint
+from flask import request, jsonify, Blueprint, current_app
+import requests
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
 from models.analysis import AnalysisRequest, AnalysisResult
@@ -10,16 +11,38 @@ from sevices.gemini_service import get_solar_analysis, get_ar_layout
 # Configure Cloudinary (it reads from CLOUDINARY_URL in .env)
 import cloudinary
 
-# ... in your main app factory ...
-# cloudinary.config(
-#   cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
-#   api_key = os.environ.get('CLOUDINARY_API_KEY'),
-#   api_secret = os.environ.get('CLOUDINARY_API_SECRET')
-# )
-# Or just let it use the URL
-
 # --- Define the Blueprint ---
 ai_bp = Blueprint('ai', __name__) # <-- Create the blueprint
+
+def get_3d_roof_model(lat, lon):
+    """
+    Calls the Google Aerial View API to get a 3D model URL.
+    """
+    try:
+        maps_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+        if not maps_key:
+            current_app.logger.error("GOOGLE_MAPS_API_KEY not set.")
+            return None
+            
+        url = "https://aerialview.googleapis.com/v1/buildings:findClosest"
+        params = {
+            'key': maps_key,
+            'location.latitude': lat,
+            'location.longitude': lon
+        }
+        
+        response = requests.get(url, params=params)
+        response.raise_for_status() # Raise an error for bad responses
+        
+        data = response.json()
+        
+        # Extract the GLB model URL
+        model_url = data.get('renders', {}).get('gltf', {}).get('url')
+        return model_url
+        
+    except Exception as e:
+        current_app.logger.error(f"Aerial View API failed: {e}")
+        return None
 
 # --- Use the Blueprint for routing ---
 @ai_bp.route('/analysis/submit', methods=['POST']) # <-- Changed from @main.route
@@ -59,6 +82,11 @@ def submit_analysis():
     
     # --- 4. Run AI Analysis (Async task recommended) ---
     try:
+        roof_model_url = get_3d_roof_model(
+            lat=new_request.latitude,
+            lon=new_request.longitude
+        )
+
         # Get text-based analysis
         gemini_data = get_solar_analysis(
             address=new_request.address,
@@ -86,7 +114,8 @@ def submit_analysis():
             annual_savings_ksh=gemini_data.get('annual_savings_ksh'),
             system_size_kw=gemini_data.get('system_size_kw'),
             payback_period_years=gemini_data.get('payback_period_years'),
-            panel_layout_json=json.dumps(ar_layout_json) # Store as JSON string
+            panel_layout_json=json.dumps(ar_layout_json),
+            roof_model_url=roof_model_url
         )
         db.session.add(new_result)
         db.session.commit()
@@ -137,7 +166,7 @@ def get_latest_analysis():
             "annual_savings_ksh": result.annual_savings_ksh,
             "system_size_kw": result.system_size_kw,
             "payback_period_years": result.payback_period_years,
-            # Parse JSON string back to object
-            "panel_layout": json.loads(result.panel_layout_json) if result.panel_layout_json else None 
+            "panel_layout": json.loads(result.panel_layout_json) if result.panel_layout_json else None,
+            "roof_model_url": result.roof_model_url
         }
     }), 200
