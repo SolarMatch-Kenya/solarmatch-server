@@ -37,3 +37,4 @@ class AnalysisResult(db.Model):
     
     # For the 3D/AR view
     panel_layout_json = db.Column(db.Text) # Stores a JSON string of panel coordinates
+    roof_model_url = db.Column(db.String(500), nullable=True)
