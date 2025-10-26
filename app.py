@@ -7,6 +7,7 @@ from extensions import db, migrate, bcrypt, jwt
 
 from routes.ai_routes import ai_bp
 from routes.auth_routes import auth_bp
+from routes.admin_routes import admin_bp
 from routes import HelloResource
 
 def create_app(config_class=Config):
@@ -22,6 +23,7 @@ def create_app(config_class=Config):
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
     # Setup API
     api = Api(app)

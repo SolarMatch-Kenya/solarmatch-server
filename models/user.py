@@ -11,6 +11,7 @@ class User(db.Model):
     phone_number = db.Column(db.String,)
     user_name = db.Column(db.String, unique=True, nullable=False)
     role = db.Column(db.String, default="customer")    # can be a customer, or installer
+    county = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
