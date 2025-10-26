@@ -1,7 +1,7 @@
 import os
 from flask import request, jsonify, Blueprint
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from extensions import db
+from extensions import db, mail
 from models.user import User
 from sqlalchemy import or_ # <-- 1. Import 'or_' for searching
 import random
@@ -9,6 +9,7 @@ from utils.helpers import generate_username
 from extensions import bcrypt
 from models.content import Faq, SustainabilityTip, AboutContent
 from models.analysis import AnalysisRequest
+from flask_mail import Message
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -190,17 +191,45 @@ def add_installer():
     db.session.add(user)
     db.session.commit()
 
-    # --- IMPORTANT ---
-    # In a real app, you would email this. For now, we print it to the console
-    # so you can test the installer login flow.
-    print("--- NEW INSTALLER CREATED ---")
-    print(f"Email: {email}")
-    print(f"Username: {user_name}")
-    print(f"Temporary Password: {temp_password}")
-    print("-------------------------------")
+    # --- 3. Send the Welcome Email ---
+    try:
+        login_url = f"{os.environ.get('FRONTEND_URL', 'http://localhost:5173')}/login"
+        
+        msg = Message(
+            subject="Welcome to SolarMatch Kenya!",
+            recipients=[user.email],
+            # Use MAIL_DEFAULT_SENDER from config
+            # sender=app.config['MAIL_DEFAULT_SENDER'] # Optional: Specify sender if different
+        )
+        msg.html = f"""
+        <p>Hello {user.full_name},</p>
+        <p>Welcome to SolarMatch Kenya! An administrator has created an installer account for you.</p>
+        <p>Please use the following temporary credentials to log in:</p>
+        <ul>
+            <li><strong>Username:</strong> {user.user_name}</li>
+            <li><strong>Temporary Password:</strong> {temp_password}</li>
+        </ul>
+        <p>You can log in here: <a href="{login_url}">{login_url}</a></p>
+        <p><strong>Important:</strong> You will be required to set a new password immediately after your first login.</p>
+        <p>Best regards,<br>The SolarMatch Kenya Team</p>
+        """
+        mail.send(msg)
+        print(f"--- Welcome email sent to {user.email} ---") # Keep console log for confirmation
+
+    except Exception as e:
+        # Log the error but don't fail the request just because email failed
+        print(f"!!! FAILED TO SEND WELCOME EMAIL to {user.email}: {e} !!!")
+        # In production, you'd log this more formally: current_app.logger.error(...)
+
+    # --- Don't print password to console anymore ---
+    # print("--- NEW INSTALLER CREATED ---")
+    # print(f"Email: {email}")
+    # print(f"Username: {user_name}")
+    # print(f"Temporary Password: {temp_password}")
+    # print("-------------------------------")
 
     return jsonify({
-        "message": "Installer added successfully",
+        "message": "Installer added successfully and welcome email sent", # Update message
         "user": {"id": user.id, "full_name": user.full_name, "email": user.email, "category": user.installer_category}
     }), 201
 
