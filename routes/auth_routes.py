@@ -1,12 +1,14 @@
-from flask import Blueprint, request, jsonify
+import os
+from flask import Blueprint, request
 from flask_restful import Api, Resource
-from extensions import db, bcrypt
+from extensions import db, bcrypt, mail
 from models.user import User
 from models.login_code import LoginCode
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from datetime import datetime, timedelta, timezone
 from utils.helpers import generate_username
 import random
+from flask_mail import Message
 
 auth_bp = Blueprint("auth", __name__)
 api = Api(auth_bp)
@@ -96,10 +98,34 @@ class LoginResource(Resource):
         db.session.add(login_code)
         db.session.commit()
 
-        # TODO: send this via email
-        print(f"Login code for {user.email}: {code}")
+        # --- 4. Send the code via email ---
+        try:
+            msg = Message(
+                subject="Your SolarMatch Verification Code",
+                recipients=[user.email],
+                # sender=app.config['MAIL_DEFAULT_SENDER'] # Optional: Uses default sender from config
+            )
+            msg.html = f"""
+            <p>Hello {user.full_name},</p>
+            <p>Your verification code for SolarMatch is:</p>
+            <p style="font-size: 24px; font-weight: bold; margin: 20px 0;">{code}</p>
+            <p>This code will expire in 5 minutes.</p>
+            <p>If you did not request this code, please ignore this email.</p>
+            <p>Best regards,<br>The SolarMatch Kenya Team</p>
+            """
+            mail.send(msg)
+            print(f"--- Verification code email sent to {user.email} ---") # Keep for confirmation
 
-        return {"message": "Confirmation code sent to email"}, 200
+        except Exception as e:
+            # Important: Log the error but don't stop the login process
+            # In production, use proper logging: current_app.logger.error(...)
+            print(f"!!! FAILED TO SEND VERIFICATION EMAIL to {user.email}: {e} !!!")
+            # You might want to decide if the login should proceed even if email fails.
+            # For now, we continue and return the success message to the frontend.
+
+        # print(f"Login code for {user.email}: {code}")
+
+        return {"message": "Confirmation code sent to your email"}, 200
 
 
 # -------------------------
