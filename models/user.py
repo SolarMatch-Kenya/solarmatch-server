@@ -24,4 +24,6 @@ class User(db.Model):
     # analysis = db.relationship("Analysis", backref="user", lazy=True)
     login_codes = db.relationship("LoginCode", backref="user", lazy=True)
 
+    contract = db.relationship("SignedContract", backref="user", uselist=False, lazy=True)
+
     
