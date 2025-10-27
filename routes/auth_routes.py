@@ -118,15 +118,22 @@ class ConfirmCodeResource(Resource):
         login_code = LoginCode.query.filter_by(user_id=user.id, code=code, used=False).first()
         now = datetime.now(timezone.utc)
 
-        if not login_code or login_code.expires_at.replace(tzinfo=timezone.utc) < now:
-            return {"message": "Invalid or expired code"}, 400
+        # Allow buffer for clock skew slightly
+        if not login_code or login_code.expires_at.replace(tzinfo=timezone.utc) < (now - timedelta(seconds=10)):
+             # Invalidate the code if expired
+             if login_code:
+                 login_code.used = True
+                 db.session.commit()
+             return {"message": "Invalid or expired code"}, 400
+
 
         login_code.used = True
         db.session.commit()
 
-        # --- Generate access token ---
-        access_token = create_access_token(identity=str(user.id))
+        # Generate access token using the user's ID (as confirmed before)
+        access_token = create_access_token(identity=user.id) # Use ID
 
+        # --- UPDATE THE RETURNED USER OBJECT ---
         return {
             "message": "Login successful",
             "access_token": access_token,
@@ -135,83 +142,15 @@ class ConfirmCodeResource(Resource):
                 "full_name": user.full_name,
                 "email": user.email,
                 "user_name": user.user_name,
-                "role": user.role
+                "role": user.role,
+                # Add these flags:
+                "password_reset_required": user.password_reset_required,
+                "contract_accepted": user.contract_accepted 
             }
         }, 200
-
-
-# -------------------------
-#   USERS (Admin use)
-# -------------------------
-class UsersResource(Resource):
-    def get(self):
-        users = User.query.all()
-        return {
-            "users": [
-                {
-                    "id": u.id,
-                    "full_name": u.full_name,
-                    "email": u.email,
-                    "role": u.role,
-                    "user_name": u.user_name
-                } for u in users
-            ]
-        }, 200
-
-
-# -------------------------
-#   Add Installer (Admin only)
-# -------------------------
-class AddInstallerResource(Resource):
-    @jwt_required()
-    def post(self):
-        current_user_id = get_jwt_identity()
-        current_user = User.query.get(current_user_id)
-        if current_user.role != "admin":
-            return {"message":"Admin access required"}, 403
-        
-        """Admin can add installers manually."""
-        data = request.get_json()
-        full_name = data.get("full_name")
-        email = data.get("email")
-        phone_number = data.get("phone_number")
-
-        if not all([full_name, email]):
-            return {"message": "Full name and email are required"}, 400
-
-        if User.query.filter_by(email=email).first():
-            return {"message": "Installer with this email already exists"}, 400
-
-        # --- Create temporary password ---
-        temp_password = f"Solar{random.randint(1000,9999)}!"
-        pw_hash = bcrypt.generate_password_hash(temp_password).decode("utf-8")
-
-        # --- Generate installer username ---
-        user_name = generate_username(user_name, "installer")
-
-        user = User(
-            full_name=full_name,
-            email=email,
-            phone_number=phone_number,
-            role="installer",
-            user_name=user_name,
-            password_hash=pw_hash
-        )
-        db.session.add(user)
-        db.session.commit()
-
-        # TODO: send installer email with credentials
-        print(f"Installer credentials for {email} -> Username: {user_name}, Password: {temp_password}")
-
-        return {
-            "message": "Installer added successfully and credentials sent via email",
-            "user_name": user_name
-        }, 201
 
 
 # --- Register all routes ---
 api.add_resource(RegisterResource, "/register")          # customer signup
 api.add_resource(LoginResource, "/login")                # all roles
 api.add_resource(ConfirmCodeResource, "/confirm")        # confirm code (2FA)
-api.add_resource(UsersResource, "/users")                # admin list users
-api.add_resource(AddInstallerResource, "/add-installer") # admin adds installer
