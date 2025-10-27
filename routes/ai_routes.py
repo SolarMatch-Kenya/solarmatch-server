@@ -120,7 +120,8 @@ def submit_analysis():
             roof_model_url=roof_model_url,
             summary_text=gemini_data.get('summary_text'),
             financial_summary_text=gemini_data.get('financial_summary_text'),
-            environmental_summary_text=gemini_data.get('environmental_summary_text')
+            environmental_summary_text=gemini_data.get('environmental_summary_text'),
+            solar_suitability_score=gemini_data.get('solar_suitability_score')
         )
         db.session.add(new_result)
         db.session.commit()
@@ -158,6 +159,17 @@ def get_latest_analysis():
 
     # Success! Return all data
     result = latest_request.result
+
+    panel_layout_parsed = None
+    if result.panel_layout_json:
+        try:
+            panel_layout_parsed = json.loads(result.panel_layout_json)
+            # Ensure it's a list (basic check)
+            if not isinstance(panel_layout_parsed, list):
+                panel_layout_parsed = None
+        except json.JSONDecodeError:
+            panel_layout_parsed = None
+
     return jsonify({
         "status": "COMPLETED",
         "request": {
@@ -175,7 +187,9 @@ def get_latest_analysis():
             "roof_model_url": result.roof_model_url,
             "summary_text": result.summary_text,
             "financial_summary_text": result.financial_summary_text,
-            "environmental_summary_text": result.environmental_summary_text
+            "environmental_summary_text": result.environmental_summary_text,
+            "solar_suitability_score": result.solar_suitability_score,
+            "panel_layout": panel_layout_parsed
         }
     }), 200
 
