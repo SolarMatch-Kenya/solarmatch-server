@@ -15,8 +15,6 @@ class User(db.Model):
     password_reset_required = db.Column(db.Boolean, default=False, nullable=False)
     installer_category = db.Column(db.String(100), nullable=True) # e.g., Residential, Commercial
 
-    contract_accepted = db.Column(db.Boolean, default=False, nullable=False)
-
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
