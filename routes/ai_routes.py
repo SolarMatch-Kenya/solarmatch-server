@@ -6,6 +6,8 @@ import requests
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
 from models.analysis import AnalysisRequest, AnalysisResult
+from models.quote_request import QuoteRequest 
+from models.user import User
 from sevices.gemini_service import get_solar_analysis, get_ar_layout
 
 # Configure Cloudinary (it reads from CLOUDINARY_URL in .env)
@@ -115,7 +117,10 @@ def submit_analysis():
             system_size_kw=gemini_data.get('system_size_kw'),
             payback_period_years=gemini_data.get('payback_period_years'),
             panel_layout_json=json.dumps(ar_layout_json),
-            roof_model_url=roof_model_url
+            roof_model_url=roof_model_url,
+            summary_text=gemini_data.get('summary_text'),
+            financial_summary_text=gemini_data.get('financial_summary_text'),
+            environmental_summary_text=gemini_data.get('environmental_summary_text')
         )
         db.session.add(new_result)
         db.session.commit()
@@ -167,6 +172,67 @@ def get_latest_analysis():
             "system_size_kw": result.system_size_kw,
             "payback_period_years": result.payback_period_years,
             "panel_layout": json.loads(result.panel_layout_json) if result.panel_layout_json else None,
-            "roof_model_url": result.roof_model_url
+            "roof_model_url": result.roof_model_url,
+            "summary_text": result.summary_text,
+            "financial_summary_text": result.financial_summary_text,
+            "environmental_summary_text": result.environmental_summary_text
         }
     }), 200
+
+
+# --- 5. ADD NEW ENDPOINT FOR INSTALLER ROOF REPORTS ---
+@ai_bp.route('/installer-reports', methods=['GET'])
+@jwt_required()
+def get_installer_reports():
+    installer_id = get_jwt_identity()
+    
+    # Ensure user is an installer
+    installer = User.query.get(installer_id)
+    if not installer or installer.role != 'installer':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # 1. Find all customer IDs from this installer's leads
+    customer_ids = [
+        lead.customer_id for lead in 
+        QuoteRequest.query.filter_by(installer_id=installer_id).all()
+    ]
+    
+    if not customer_ids:
+        return jsonify([]), 200 # Return empty list if no leads
+
+    # 2. Find all "COMPLETED" analyses for those customer IDs
+    # We join tables to get the customer's name and the report data
+    reports = db.session.query(
+        AnalysisRequest.id,
+        User.full_name.label('customer_name'),
+        AnalysisRequest.address,
+        AnalysisResult.status,
+        AnalysisResult.annual_savings_ksh, # Example data point
+        AnalysisResult.payback_period_years, # Example data point
+        AnalysisRequest.created_at
+    ).join(
+        AnalysisResult, AnalysisRequest.id == AnalysisResult.request_id
+    ).join(
+        User, AnalysisRequest.user_id == User.id
+    ).filter(
+        AnalysisRequest.user_id.in_(customer_ids),
+        AnalysisResult.status == 'COMPLETED'
+    ).order_by(
+        AnalysisRequest.created_at.desc()
+    ).all()
+
+    # 3. Format the data for the frontend
+    reports_list = [
+        {
+            "id": report.id,
+            "customerName": report.customer_name,
+            "address": report.address,
+            "reportDate": report.created_at.isoformat(),
+            "status": report.status,
+            "annualSavings": f"KSh {report.annual_savings_ksh:,.0f}", # Formatted
+            "payback": f"{report.payback_period_years:.1f} years"
+        } 
+        for report in reports
+    ]
+
+    return jsonify(reports_list), 200

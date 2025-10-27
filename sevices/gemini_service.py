@@ -40,7 +40,10 @@ def get_solar_analysis(address, lat, lon, energy_kwh, roof_type):
       "system_size_kw": 10,
       "payback_period_years": 5.5,
       "roof_orientation_ai": "South-East",
-      "roof_angle_ai": 20
+      "roof_angle_ai": 20,
+      "summary_text": "Based on your {energy_kwh} kWh consumption and {roof_type} roof, we recommend a 10 kW system with 25 panels. This system is optimized for your location and provides significant energy production.",
+      "financial_summary": "This 10 kW system has an estimated payback period of 5.5 years. You can expect to save approximately KSh 300,000 annually on your electricity bills, making it a strong financial investment.",
+      "environmental_summary": "By installing this system, you will reduce your carbon footprint by approximately 8 tonnes of CO2 per year. This is equivalent to planting over 130 trees annually."
     }}
 
     JSON:
