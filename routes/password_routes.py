@@ -5,6 +5,8 @@ from models.user import User
 
 password_bp = Blueprint('password', __name__)
 
+# routes/password_routes.py
+
 @password_bp.route('/change-password', methods=['POST'])
 @jwt_required()
 def change_password():
@@ -20,11 +22,29 @@ def change_password():
     if not new_password or len(new_password) < 6:
         return jsonify({"error": "Password must be at least 6 characters"}), 400
         
-    # Hash new password
     pw_hash = bcrypt.generate_password_hash(new_password).decode("utf-8")
     
     user.password_hash = pw_hash
-    user.password_reset_required = False # <-- Mark as changed
+    user.password_reset_required = False # Mark as changed
     db.session.commit()
     
-    return jsonify({"message": "Password updated successfully. Please log in again."}), 200
+    # --- START MODIFICATION ---
+    # Manually create a dictionary of the user to send back
+    # (Using a Marshmallow schema is cleaner, but this works)
+    user_data = {
+        "id": user.id,
+        "full_name": user.full_name,
+        "email": user.email,
+        "user_name": user.user_name,
+        "role": user.role,
+        "password_reset_required": user.password_reset_required,
+        "contractAccepted": user.contract_accepted
+        # Add any other fields your frontend AuthContext needs
+    }
+
+    # Return the message AND the updated user object
+    return jsonify({
+        "message": "Password updated successfully.",
+        "user": user_data  # <-- Send the updated user back
+    }), 200
+    # --- END MODIFICATION ---

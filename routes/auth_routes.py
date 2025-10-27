@@ -135,7 +135,9 @@ class ConfirmCodeResource(Resource):
                 "full_name": user.full_name,
                 "email": user.email,
                 "user_name": user.user_name,
-                "role": user.role
+                "role": user.role,
+                "password_reset_required": user.password_reset_required, # <-- ADD THIS
+                "contractAccepted": user.contract_accepted
             }
         }, 200
 
