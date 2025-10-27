@@ -3,9 +3,101 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
 from models.user import User
 from models.contract import SignedContract
+from models.quote_request import QuoteRequest
 from datetime import datetime
 
 installer_bp = Blueprint('installer', __name__)
+
+
+# --- 1. ENDPOINT TO GET ALL INSTALLERS ---
+@installer_bp.route('/installers', methods=['GET'])
+@jwt_required() # Make sure a user is logged in to see installers
+def get_all_installers():
+    # Find all users who are installers and whose contract is accepted
+    installers = User.query.filter_by(role='installer', contract_accepted=True).all()
+    
+    installer_list = []
+    for inst in installers:
+        installer_list.append({
+            "id": inst.id,
+            "name": inst.full_name,
+            "location": inst.county or "N/A",
+            # We'll add real ratings/reviews later
+            "rating": 4.5, # Placeholder
+            "reviews": (inst.id * 15) % 100 + 20 # Placeholder
+            # Add logo URL if you store it on the user model
+            # "logo": inst.logo_url 
+        })
+        
+    return jsonify(installer_list), 200
+
+# --- 2. ENDPOINT TO CREATE A QUOTE REQUEST ---
+@installer_bp.route('/quote-request', methods=['POST'])
+@jwt_required()
+def create_quote_request():
+    customer_id = get_jwt_identity()
+    data = request.get_json()
+    installer_id = data.get('installer_id')
+
+    if not installer_id:
+        return jsonify({"error": "Installer ID is required"}), 400
+
+    # Check if this user is a customer
+    customer = User.query.get(customer_id)
+    if customer.role != 'customer':
+        return jsonify({"error": "Only customers can request quotes"}), 403
+
+    # Check if request already exists
+    existing_request = QuoteRequest.query.filter_by(
+        customer_id=customer_id, 
+        installer_id=installer_id
+    ).first()
+    
+    if existing_request:
+        return jsonify({"message": "You have already sent a request to this installer"}), 409 # 409 Conflict
+
+    # Create new request
+    new_request = QuoteRequest(
+        customer_id=customer_id,
+        installer_id=installer_id,
+        status='New'
+    )
+    
+    db.session.add(new_request)
+    db.session.commit()
+    
+    return jsonify({"message": "Quote request sent successfully!"}), 201
+
+# --- 3. ENDPOINT FOR INSTALLER TO GET THEIR LEADS ---
+@installer_bp.route('/installer-leads', methods=['GET'])
+@jwt_required()
+def get_installer_leads():
+    installer_id = get_jwt_identity()
+    
+    # Ensure the user is an installer
+    installer = User.query.get(installer_id)
+    if installer.role != 'installer':
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    # Query all leads for this installer, and join with the customer (User) table
+    # This uses the 'leads_received' relationship defined in models/user.py
+    leads = installer.leads_received
+    
+    leads_data = []
+    for lead in leads:
+        leads_data.append({
+            "id": lead.id,
+            "status": lead.status,
+            "requested_at": lead.created_at.isoformat(),
+            # "customer" is the backref from the relationship
+            "name": lead.customer.full_name,
+            "location": lead.customer.county or "N/A",
+            "contact": lead.customer.email,
+            "potential": "High" # You can add logic for this later
+        })
+        
+    return jsonify(leads_data), 200
+
 
 @installer_bp.route('/installers/<int:user_id>/contract', methods=['POST'])
 @jwt_required()
