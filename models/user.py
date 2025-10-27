@@ -1,5 +1,7 @@
 from extensions import db
 from datetime import datetime, timezone
+from .contract import SignedContract
+from .quote_request import QuoteRequest
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -23,7 +25,10 @@ class User(db.Model):
     # relationships
     # analysis = db.relationship("Analysis", backref="user", lazy=True)
     login_codes = db.relationship("LoginCode", backref="user", lazy=True)
-
     contract = db.relationship("SignedContract", backref="user", uselist=False, lazy=True)
+    requests_sent = db.relationship('QuoteRequest', foreign_keys=[QuoteRequest.customer_id], backref='customer', lazy=True)
+    
+    # Leads RECEIVED by this user (when they are an installer)
+    leads_received = db.relationship('QuoteRequest', foreign_keys=[QuoteRequest.installer_id], backref='installer', lazy=True)
 
     

@@ -4,3 +4,4 @@ from .user import User
 from .login_code import LoginCode
 from .analysis import AnalysisRequest, AnalysisResult
 from .content import Faq, SustainabilityTip, AboutContent
+from .quote_request import QuoteRequest
