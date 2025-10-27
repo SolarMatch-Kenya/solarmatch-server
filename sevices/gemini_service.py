@@ -3,6 +3,7 @@ import google.generativeai as genai
 from flask import current_app, json
 import requests
 import io 
+import math
 from PIL import Image
 
 # Configure the API key from your .env file
@@ -28,8 +29,12 @@ def get_solar_analysis(address, lat, lon, energy_kwh, roof_type):
     1.  Typical solar irradiance data for Kenya (specifically at {lat}, {lon}).
     2.  The user's energy consumption patterns ({energy_kwh} kWh/month).
     3.  The property's likely sunlight exposure based on its coordinates.
+    4.  The roof type '{roof_type}' and typical orientations/angles.
 
-    Provide the following estimates in JSON format.
+    Provide the following estimates AND a suitability score in JSON format.
+    The suitability score should be an integer between 0 and 100, representing
+    how ideal the location and roof seem for solar, based on irradiance,
+    potential orientation, and lack of obvious obstructions (guess if needed).
     Only return a single valid JSON object.
 
     Example format:
@@ -43,7 +48,8 @@ def get_solar_analysis(address, lat, lon, energy_kwh, roof_type):
       "roof_angle_ai": 20,
       "summary_text": "Based on your {energy_kwh} kWh consumption and {roof_type} roof, we recommend a 10 kW system with 25 panels. This system is optimized for your location and provides significant energy production.",
       "financial_summary": "This 10 kW system has an estimated payback period of 5.5 years. You can expect to save approximately KSh 300,000 annually on your electricity bills, making it a strong financial investment.",
-      "environmental_summary": "By installing this system, you will reduce your carbon footprint by approximately 8 tonnes of CO2 per year. This is equivalent to planting over 130 trees annually."
+      "environmental_summary": "By installing this system, you will reduce your carbon footprint by approximately 8 tonnes of CO2 per year. This is equivalent to planting over 130 trees annually.",
+      "solar_suitability_score": 92  # <-- ADDED
     }}
 
     JSON:
@@ -52,7 +58,17 @@ def get_solar_analysis(address, lat, lon, energy_kwh, roof_type):
     try:
         response = model.generate_content(prompt)
         json_text = response.text.strip().replace("```json", "").replace("```", "")
-        return json.loads(json_text)
+        data = json.loads(json_text)
+        if "solar_suitability_score" in data:
+            try:
+                score = int(data["solar_suitability_score"])
+                data["solar_suitability_score"] = max(0, min(100, score)) # Clamp between 0-100
+            except (ValueError, TypeError):
+                 data["solar_suitability_score"] = None # Set to null if invalid
+        else:
+            data["solar_suitability_score"] = None # Set to null if missing
+
+        return data
         
     except Exception as e:
         current_app.logger.error(f"Gemini analysis failed: {e}")
@@ -76,23 +92,27 @@ def get_ar_layout(image_url, roof_type):
 
         # 9. Create the text part of the prompt
         text_prompt = f"""
-        Analyze this roof image.
-        The roof is a "{roof_type}" type.
-        
-        Suggest a simple JSON array of 3D coordinates for placing 10 solar panels
-        on the main, clearest surface.
-        Assume a flat plane at y=0.
-        
+        Analyze this roof image ({roof_type} type).
+        Identify the largest, flattest, most sun-facing roof plane suitable for solar panels.
+
+        Suggest a JSON array containing position AND rotation for placing 10 standard solar panels
+        (approx 1m x 2m) flat onto that identified roof plane in a grid layout.
+
+        - 'position': [x, y, z] coordinates relative to the center of the roof plane. Assume Y is the 'up' direction perpendicular to the roof plane *at that point*.
+        - 'rotation': [rx, ry, rz] Euler rotation angles IN DEGREES needed to align the panel with the roof plane. ry is rotation around the Y-axis (yaw), rx around X (pitch), rz around Z (roll).
+
+        Estimate these values visually. Aim for a sensible layout on the main roof surface visible.
+        Only return the JSON array.
+
         Example format:
         [
-          {{"x": -2, "z": -1}},
-          {{"x": -2, "z": 1}},
-          {{"x": 0, "z": -1}},
-          {{"x": 0, "z": 1}},
-          {{"x": 2, "z": -1}},
-          {{"x": 2, "z": 1}}
+          {{"position": [-2.5, 0.05, -1.0], "rotation": [15, 0, 0]}},
+          {{"position": [-2.5, 0.05, 1.0], "rotation": [15, 0, 0]}},
+          {{"position": [-0.5, 0.05, -1.0], "rotation": [15, 0, 0]}},
+          {{"position": [-0.5, 0.05, 1.0], "rotation": [15, 0, 0]}},
+          # ... etc for 10 panels
         ]
-        
+
         JSON:
         """
         
@@ -100,7 +120,29 @@ def get_ar_layout(image_url, roof_type):
         response = model.generate_content([text_prompt, img])
         
         json_text = response.text.strip().replace("```json", "").replace("```", "")
-        return json.loads(json_text)
+        layout_data = json.loads(json_text)
+        
+        # Validate and convert degrees to radians for three.js
+        validated_layout = []
+        if isinstance(layout_data, list):
+            for item in layout_data:
+                if isinstance(item, dict) and 'position' in item and 'rotation' in item:
+                    pos = item['position']
+                    rot_deg = item['rotation']
+                    if (isinstance(pos, list) and len(pos) == 3 and 
+                        isinstance(rot_deg, list) and len(rot_deg) == 3):
+                        try:
+                            # Convert rotation from degrees (AI) to radians (three.js)
+                            rot_rad = [math.radians(angle) for angle in rot_deg]
+                            validated_layout.append({
+                                "position": [float(p) for p in pos],
+                                "rotation": rot_rad 
+                            })
+                        except (ValueError, TypeError):
+                            continue # Skip invalid number format
+            return validated_layout # Return only valid items
+        else:
+             raise ValueError("AI did not return a list for panel layout.")
         
     except Exception as e:
         current_app.logger.error(f"Gemini AR layout failed: {e}")

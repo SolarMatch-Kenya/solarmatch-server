@@ -43,3 +43,5 @@ class AnalysisResult(db.Model):
     summary_text = db.Column(db.Text, nullable=True)
     financial_summary_text = db.Column(db.Text, nullable=True)
     environmental_summary_text = db.Column(db.Text, nullable=True)
+
+    solar_suitability_score = db.Column(db.Integer, nullable=True) # Score 0-100
