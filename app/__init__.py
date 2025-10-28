@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS
 from app.db import db
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -17,6 +18,10 @@ from app.routers.user import user_bp
 def create_app():
     app = Flask(__name__)
     app.config.from_object("app.core.config.Config")
+
+    # Enable CORS for all routes
+    CORS(app, origins=["http://localhost:3000",
+         "http://localhost:5173", "http://localhost:5174"], supports_credentials=True)
 
     db.init_app(app)
     migrate = Migrate(app, db)

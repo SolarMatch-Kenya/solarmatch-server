@@ -17,5 +17,4 @@ python-dotenv==1.0.1
 SQLAlchemy==2.0.44
 typing_extensions==4.13.2
 Werkzeug==3.0.6
-google-api-python-client==2.111.0
 google-generativeai==0.1.0rc1
