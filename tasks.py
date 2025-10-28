@@ -3,7 +3,6 @@ import json
 from extensions import db  # Import your db instance
 from models.analysis import AnalysisRequest, AnalysisResult
 from sevices.gemini_service import get_solar_analysis, get_ar_layout
-from routes.ai_routes import get_3d_roof_model  # Import your 3D model function
 from .app import celery  # Import the celery instance from your main app file
 
 @celery.task(name='tasks.run_ai_analysis')
@@ -11,6 +10,8 @@ def run_ai_analysis(request_id):
     """
     The background task that runs all slow AI analysis.
     """
+    from routes.ai_routes import get_3d_roof_model
+    
     try:
         # 1. Get the request and result objects
         req = AnalysisRequest.query.get(request_id)
