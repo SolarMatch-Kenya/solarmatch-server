@@ -17,10 +17,15 @@ from routes import HelloResource
 def create_app(config_class=Config):
     app = Flask(__name__)
 
-    FRONTEND_URL = os.environ.get('FRONTEND_URL')
-    ALLOWED_ORIGINS = [FRONTEND_URL, "http://localhost:5173"] 
-
-    CORS(app, resources={r"/api/*": {"origins": ALLOWED_ORIGINS}})
+    CORS(app, resources={
+        r"/*": {
+            "origins": [
+                "https://solarmatch-two.vercel.app",
+                "http://localhost:5173"  # for local testing
+            ],
+            "supports_credentials": True
+        }
+    })
     app.config.from_object(config_class)
 
     # Initialize extensions
