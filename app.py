@@ -1,3 +1,4 @@
+import os
 from flask import Flask
 from flask_restful import Api
 from extensions import db, migrate
@@ -15,7 +16,11 @@ from routes import HelloResource
 
 def create_app(config_class=Config):
     app = Flask(__name__)
-    CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5173", "http://localhost:5173"])
+
+    FRONTEND_URL = os.environ.get('FRONTEND_URL')
+    ALLOWED_ORIGINS = [FRONTEND_URL, "http://localhost:5173"] 
+
+    CORS(app, resources={r"/api/*": {"origins": ALLOWED_ORIGINS}})
     app.config.from_object(config_class)
 
     # Initialize extensions
