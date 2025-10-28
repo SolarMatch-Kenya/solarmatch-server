@@ -9,6 +9,7 @@ from models.analysis import AnalysisRequest, AnalysisResult
 from models.quote_request import QuoteRequest 
 from models.user import User
 from sevices.gemini_service import get_solar_analysis, get_ar_layout
+from tasks import run_ai_analysis
 
 # Configure Cloudinary (it reads from CLOUDINARY_URL in .env)
 import cloudinary
@@ -47,29 +48,24 @@ def get_3d_roof_model(lat, lon):
         return None
 
 # --- Use the Blueprint for routing ---
-@ai_bp.route('/analysis/submit', methods=['POST']) # <-- Changed from @main.route
+@ai_bp.route('/analysis/submit', methods=['POST'])
 @jwt_required()
 def submit_analysis():
     current_user_id = get_jwt_identity()
-    
-    # 1. Get data from the form
     form_data = request.form
     roof_image_file = request.files.get('roofImage')
 
     if not roof_image_file:
         return jsonify({"error": "Roof image is required"}), 400
 
-    # 2. Upload image to Cloudinary
+    # 1. Upload image (This is fast)
     try:
-        upload_result = cloudinary.uploader.upload(
-            roof_image_file,
-            folder="roof_analysis"
-        )
+        upload_result = cloudinary.uploader.upload(...)
         image_url = upload_result.get('secure_url')
     except Exception as e:
         return jsonify({"error": f"Image upload failed: {e}"}), 500
 
-    # 3. Save the initial request to DB
+    # 2. Save Request AND a PENDING Result
     new_request = AnalysisRequest(
         user_id=current_user_id,
         address=form_data.get('address'),
@@ -79,64 +75,26 @@ def submit_analysis():
         roof_type_manual=form_data.get('roofType'),
         roof_image_url=image_url
     )
-    db.session.add(new_request)
-    db.session.commit()
     
-    # --- 4. Run AI Analysis (Async task recommended) ---
-    try:
-        roof_model_url = get_3d_roof_model(
-            lat=new_request.latitude,
-            lon=new_request.longitude
-        )
+    new_result = AnalysisResult(
+        request=new_request, # Use the backref
+        status='PENDING'
+    )
+    db.session.add(new_request)
+    db.session.add(new_result)
+    db.session.commit()
 
-        # Get text-based analysis
-        gemini_data = get_solar_analysis(
-            address=new_request.address,
-            lat=new_request.latitude,
-            lon=new_request.longitude,
-            energy_kwh=new_request.energy_consumption,
-            roof_type=new_request.roof_type_manual
-        )
-        
-        # Get AR layout
-        ar_layout_json = get_ar_layout(
-            image_url=new_request.roof_image_url,
-            roof_type=new_request.roof_type_manual
-        )
+    # 3. --- TRIGGER THE BACKGROUND TASK ---
+    # This is the new, fast part.
+    # .delay() tells Celery to run this task ASAP.
+    run_ai_analysis.delay(new_request.id)
 
-        # 5. Save results to DB
-        new_result = AnalysisResult(
-            request_id=new_request.id,
-            status='COMPLETED',
-            roof_type_ai=gemini_data.get('roof_type_ai', new_request.roof_type_manual),
-            roof_orientation_ai=gemini_data.get('roof_orientation_ai'),
-            roof_angle_ai=gemini_data.get('roof_angle_ai'),
-            panel_count=gemini_data.get('panel_count'),
-            annual_production_kwh=gemini_data.get('annual_production_kwh'),
-            annual_savings_ksh=gemini_data.get('annual_savings_ksh'),
-            system_size_kw=gemini_data.get('system_size_kw'),
-            payback_period_years=gemini_data.get('payback_period_years'),
-            panel_layout_json=json.dumps(ar_layout_json),
-            roof_model_url=roof_model_url,
-            summary_text=gemini_data.get('summary_text'),
-            financial_summary_text=gemini_data.get('financial_summary_text'),
-            environmental_summary_text=gemini_data.get('environmental_summary_text'),
-            solar_suitability_score=gemini_data.get('solar_suitability_score')
-        )
-        db.session.add(new_result)
-        db.session.commit()
-        
-        return jsonify({"message": "Analysis submitted successfully", "analysis_id": new_request.id}), 201
+    # 4. Return success immediately
+    # We return 201 Created. The frontend will handle the redirect.
+    return jsonify({"message": "Analysis submitted successfully", "analysis_id": new_request.id}), 201
 
-    except Exception as e:
-        # If AI fails, update status
-        # Check if result already exists before creating a new one
-        if not new_request.result:
-             new_request.result = AnalysisResult(request_id=new_request.id, status='FAILED')
-        else:
-             new_request.result.status = 'FAILED'
-        db.session.commit()
-        return jsonify({"error": f"AI analysis failed: {e}"}), 500
+    # --- REMOVE all the 'try/except Exception as e' logic that called the AI ---
+    # It now lives in tasks.py
 
 @ai_bp.route('/analysis/latest', methods=['GET']) # <-- Changed from @main.route
 @jwt_required()

@@ -1,9 +1,9 @@
 import os
 from flask import Flask
-from flask_restful import Api
 from extensions import db, migrate
 from flask_cors import CORS
 from config import Config
+from celery_config import make_celery
 from extensions import db, migrate, bcrypt, jwt, mail
 from routes.ai_routes import ai_bp
 from routes.auth_routes import auth_bp
@@ -11,8 +11,10 @@ from routes.admin_routes import admin_bp
 from routes.password_routes import password_bp
 from routes.installer_routes import installer_bp
 from routes.contact_routes import contact_bp
-from routes import HelloResource
 
+import tasks
+
+celery = None
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -35,21 +37,15 @@ def create_app(config_class=Config):
     jwt.init_app(app)
     mail.init_app(app)
 
+    global celery
+    celery = make_celery(app)
+
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(password_bp, url_prefix="/api/auth")
     app.register_blueprint(installer_bp, url_prefix="/api")
     app.register_blueprint(contact_bp, url_prefix="/api")
-
-    # Setup API
-    api = Api(app)
-
-    api.add_resource(HelloResource, "/api/hello")
-
-    from routes.test_routes import test_bp
-    app.register_blueprint(test_bp, url_prefix="/api/test")
-
 
     return app
 
