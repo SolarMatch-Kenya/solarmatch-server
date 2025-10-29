@@ -1,9 +1,10 @@
 # src/tasks.py
 import json
 from extensions import db 
-from models.analysis import AnalysisRequest
+from models.analysis import AnalysisRequest, AnalysisResult
 from sevices.gemini_service import get_solar_analysis, get_ar_layout
 from celery_config import celery 
+from app import app
 
 @celery.task(name='tasks.run_ai_analysis')
 def run_ai_analysis(request_id):
@@ -15,9 +16,11 @@ def run_ai_analysis(request_id):
     try:
         # Get the request and result objects
         req = AnalysisRequest.query.get(request_id)
-        res = req.result  # Should exist with 'PENDING' status
+        res = AnalysisResult.query.filter_by(request_id=request_id).first()
+
         if not req or not res:
             print(f"Task failed: Could not find request_id {request_id}")
+            app.logger.error(f"Task failed: Could not find request or result for ID {request_id}")
             return
 
         # Run the slow AI/API calls
