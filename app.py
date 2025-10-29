@@ -3,8 +3,8 @@ from flask import Flask
 from extensions import db, migrate
 from flask_cors import CORS
 from config import Config
-from celery_config import make_celery
 from extensions import db, migrate, bcrypt, jwt, mail
+from celery_config import init_celery, celery
 from routes.ai_routes import ai_bp
 from routes.auth_routes import auth_bp
 from routes.admin_routes import admin_bp
@@ -37,8 +37,7 @@ def create_app(config_class=Config):
     jwt.init_app(app)
     mail.init_app(app)
 
-    global celery
-    celery = make_celery(app)
+    init_celery(app)
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(ai_bp, url_prefix="/api")

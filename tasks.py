@@ -3,7 +3,7 @@ import json
 from extensions import db  # Import your db instance
 from models.analysis import AnalysisRequest, AnalysisResult
 from sevices.gemini_service import get_solar_analysis, get_ar_layout
-from app import celery  # Import the celery instance from your main app file
+from celery_config import celery 
 
 @celery.task(name='tasks.run_ai_analysis')
 def run_ai_analysis(request_id):
