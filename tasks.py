@@ -4,7 +4,6 @@ from extensions import db
 from models.analysis import AnalysisRequest, AnalysisResult
 from sevices.gemini_service import get_solar_analysis, get_ar_layout
 from celery_config import celery 
-from app import app
 
 @celery.task(name='tasks.run_ai_analysis')
 def run_ai_analysis(request_id):
@@ -12,6 +11,7 @@ def run_ai_analysis(request_id):
     The background task that runs all slow AI analysis.
     """
     from routes.ai_routes import get_3d_roof_model
+    from app import app
 
     try:
         # Get the request and result objects
