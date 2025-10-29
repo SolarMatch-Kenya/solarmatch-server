@@ -35,7 +35,6 @@ if __name__ == "__main__":
             '--concurrency=1',  # Keep it light for the free tier
             '--pool=solo',      # Use a simple single-threaded pool
             '--autoscale=1,1',  # Only run one task at a time
-            '--quiet',
             '--perform-subprocess-exec', # Ensures it exits cleanly
             '--use-logcolor=False'
         ]
