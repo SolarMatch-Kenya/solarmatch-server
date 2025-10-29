@@ -22,7 +22,7 @@ def create_app(config_class=Config):
     CORS(app, resources={
         r"/*": {
             "origins": [
-                "https://solarmatch-two.vercel.app",
+                "https://solarmatch-ke.vercel.app",
                 "http://localhost:5173"  # for local testing
             ],
             "supports_credentials": True
