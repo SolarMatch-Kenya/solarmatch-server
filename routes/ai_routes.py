@@ -59,7 +59,10 @@ def submit_analysis():
 
     # Upload image (This is fast)
     try:
-        upload_result = cloudinary.uploader.upload(...)
+        upload_result = cloudinary.uploader.upload(
+            roof_image_file,        # <-- This passes the file from the form
+            folder="roof_analysis"  # <-- This tells Cloudinary where to put it
+        )
         image_url = upload_result.get('secure_url')
     except Exception as e:
         return jsonify({"error": f"Image upload failed: {e}"}), 500
