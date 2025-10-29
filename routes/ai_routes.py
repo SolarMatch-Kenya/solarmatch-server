@@ -9,7 +9,6 @@ from models.analysis import AnalysisRequest, AnalysisResult
 from models.quote_request import QuoteRequest 
 from models.user import User
 # from sevices.gemini_service import get_solar_analysis, get_ar_layout
-from tasks import run_ai_analysis
 
 import cloudinary
 
@@ -50,9 +49,13 @@ def get_3d_roof_model(lat, lon):
 @ai_bp.route('/analysis/submit', methods=['POST'])
 @jwt_required()
 def submit_analysis():
+    
+    from tasks import run_ai_analysis
+
     current_user_id = get_jwt_identity()
     form_data = request.form
     roof_image_file = request.files.get('roofImage')
+    
 
     if not roof_image_file:
         return jsonify({"error": "Roof image is required"}), 400
