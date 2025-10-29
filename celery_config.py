@@ -10,7 +10,8 @@ if not redis_url:
 celery = Celery(
     __name__,  # Use a generic name
     broker=redis_url,
-    backend=redis_url
+    backend=redis_url,
+    include=['tasks']
 )
 celery.conf.update(
     broker_connection_retry_on_startup=True
