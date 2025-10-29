@@ -25,8 +25,6 @@ def get_all_installers():
             # We'll add real ratings/reviews later
             "rating": 4.5, # Placeholder
             "reviews": (inst.id * 15) % 100 + 20 # Placeholder
-            # Add logo URL if you store it on the user model
-            # "logo": inst.logo_url 
         })
         
     return jsonify(installer_list), 200
@@ -93,7 +91,7 @@ def get_installer_leads():
             "name": lead.customer.full_name,
             "location": lead.customer.county or "N/A",
             "contact": lead.customer.email,
-            "potential": "High" # You can add logic for this later
+            "potential": "High" # I'll add logic for this later
         })
         
     return jsonify(leads_data), 200

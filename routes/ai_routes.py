@@ -8,10 +8,9 @@ from extensions import db
 from models.analysis import AnalysisRequest, AnalysisResult
 from models.quote_request import QuoteRequest 
 from models.user import User
-from sevices.gemini_service import get_solar_analysis, get_ar_layout
+# from sevices.gemini_service import get_solar_analysis, get_ar_layout
 from tasks import run_ai_analysis
 
-# Configure Cloudinary (it reads from CLOUDINARY_URL in .env)
 import cloudinary
 
 # --- Define the Blueprint ---
@@ -58,14 +57,14 @@ def submit_analysis():
     if not roof_image_file:
         return jsonify({"error": "Roof image is required"}), 400
 
-    # 1. Upload image (This is fast)
+    # Upload image (This is fast)
     try:
         upload_result = cloudinary.uploader.upload(...)
         image_url = upload_result.get('secure_url')
     except Exception as e:
         return jsonify({"error": f"Image upload failed: {e}"}), 500
 
-    # 2. Save Request AND a PENDING Result
+    # Save Request AND a PENDING Result
     new_request = AnalysisRequest(
         user_id=current_user_id,
         address=form_data.get('address'),
@@ -84,17 +83,15 @@ def submit_analysis():
     db.session.add(new_result)
     db.session.commit()
 
-    # 3. --- TRIGGER THE BACKGROUND TASK ---
+    #  --- TRIGGER THE BACKGROUND TASK ---
     # This is the new, fast part.
     # .delay() tells Celery to run this task ASAP.
     run_ai_analysis.delay(new_request.id)
 
-    # 4. Return success immediately
+    # Return success immediately
     # We return 201 Created. The frontend will handle the redirect.
     return jsonify({"message": "Analysis submitted successfully", "analysis_id": new_request.id}), 201
 
-    # --- REMOVE all the 'try/except Exception as e' logic that called the AI ---
-    # It now lives in tasks.py
 
 @ai_bp.route('/analysis/latest', methods=['GET']) # <-- Changed from @main.route
 @jwt_required()

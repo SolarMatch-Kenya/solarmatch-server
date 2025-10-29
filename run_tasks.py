@@ -3,8 +3,6 @@ import sys
 from celery_config import celery
 from kombu.simple import SimpleQueue
 
-# This is the name of your Celery queue
-# The default is 'celery'
 QUEUE_NAME = 'celery'
 
 def get_pending_task_count():

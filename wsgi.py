@@ -2,11 +2,9 @@
 
 import click
 from app import create_app
-# DO NOT import from werkzeug.security anymore
 
 app = create_app()
 
-# --- REPLACE YOUR OLD COMMAND WITH THIS ---
 @app.cli.command("create-admin")
 @click.argument("password")
 def create_admin(password):
@@ -30,7 +28,6 @@ def create_admin(password):
         role = "admin"
         username = generate_username(full_name, role)
         
-        # --- THIS IS THE KEY CHANGE ---
         # Hash the password with bcrypt, not werkzeug
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
 
@@ -51,4 +48,3 @@ def create_admin(password):
         except Exception as e:
             db.session.rollback()
             print(f"Error creating admin: {e}")
-# --- END OF NEW CODE ---

@@ -28,9 +28,7 @@ def change_password():
     user.password_reset_required = False # Mark as changed
     db.session.commit()
     
-    # --- START MODIFICATION ---
     # Manually create a dictionary of the user to send back
-    # (Using a Marshmallow schema is cleaner, but this works)
     user_data = {
         "id": user.id,
         "full_name": user.full_name,
@@ -39,7 +37,6 @@ def change_password():
         "role": user.role,
         "password_reset_required": user.password_reset_required,
         "contractAccepted": user.contract_accepted
-        # Add any other fields your frontend AuthContext needs
     }
 
     # Return the message AND the updated user object
@@ -47,4 +44,3 @@ def change_password():
         "message": "Password updated successfully.",
         "user": user_data  # <-- Send the updated user back
     }), 200
-    # --- END MODIFICATION ---

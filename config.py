@@ -16,7 +16,7 @@ class Config:
     MAIL_PORT = 587 # Use 465 for SSL, 587 for TLS
     MAIL_USE_TLS = True # Use TLS (recommended)
     MAIL_USE_SSL = False
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME') # Your Gmail address
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD') # Your Gmail App Password
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME') # Gmail address
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD') # Gmail App Password
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_USERNAME') # Sender email shown to recipient
     # ----------------------------------------

@@ -1,7 +1,7 @@
 # src/tasks.py
 import json
-from extensions import db  # Import your db instance
-from models.analysis import AnalysisRequest, AnalysisResult
+from extensions import db 
+from models.analysis import AnalysisRequest
 from sevices.gemini_service import get_solar_analysis, get_ar_layout
 from celery_config import celery 
 
@@ -13,14 +13,14 @@ def run_ai_analysis(request_id):
     from routes.ai_routes import get_3d_roof_model
 
     try:
-        # 1. Get the request and result objects
+        # Get the request and result objects
         req = AnalysisRequest.query.get(request_id)
         res = req.result  # Should exist with 'PENDING' status
         if not req or not res:
             print(f"Task failed: Could not find request_id {request_id}")
             return
 
-        # 2. Run the slow AI/API calls
+        # Run the slow AI/API calls
         roof_model_url = get_3d_roof_model(lat=req.latitude, lon=req.longitude)
         
         gemini_data = get_solar_analysis(
@@ -36,7 +36,7 @@ def run_ai_analysis(request_id):
             roof_type=req.roof_type_manual
         )
 
-        # 3. Update the result object with the new data
+        # Update the result object with the new data
         res.status = 'COMPLETED'
         res.roof_type_ai = gemini_data.get('roof_type_ai', req.roof_type_manual)
         res.roof_orientation_ai = gemini_data.get('roof_orientation_ai')
@@ -53,7 +53,7 @@ def run_ai_analysis(request_id):
         res.environmental_summary_text = gemini_data.get('environmental_summary_text')
         res.solar_suitability_score = gemini_data.get('solar_suitability_score')
 
-        # 4. Commit to the database
+        # Commit to the database
         db.session.commit()
         print(f"Successfully processed analysis {request_id}")
 

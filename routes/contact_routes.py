@@ -1,6 +1,6 @@
 import os
 from flask import request, jsonify, Blueprint
-from extensions import mail # Import mail from your extensions
+from extensions import mail 
 from flask_mail import Message
 
 contact_bp = Blueprint('contact', __name__)
@@ -18,7 +18,7 @@ def handle_contact_form():
         return jsonify({"error": "Missing required fields"}), 400
 
     # --- Configure Email ---
-    # Get your recipient email from environment variables
+    # Get recipient email from environment variables
     # (e.g., set CONTACT_EMAIL=your_email@example.com in your .env)
     recipient_email = os.environ.get('CONTACT_EMAIL')
     if not recipient_email:
@@ -31,7 +31,7 @@ def handle_contact_form():
             subject=f"Contact Form: {subject}", # Prepend subject line
             # The sender's email address (so you can reply directly)
             sender=email,
-            # Your email address where you receive the messages
+            # email address where you receive the messages
             recipients=[recipient_email],
             # Use MAIL_DEFAULT_SENDER as the 'From' name if desired, but sender controls reply-to
             # reply_to=email # Explicitly set reply-to
@@ -51,7 +51,7 @@ def handle_contact_form():
 
         html_message_body = message_body.replace('\n', '<br>')
 
-        # 2. Use the new variable in the f-string
+        
         msg.html = f"""
         <p>You received a new message from your website contact form:</p>
         <hr>

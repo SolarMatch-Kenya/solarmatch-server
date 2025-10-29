@@ -6,14 +6,14 @@ import io
 import math
 from PIL import Image
 
-# Configure the API key from your .env file
+# Configure the API key from my .env file
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 def get_solar_analysis(address, lat, lon, energy_kwh, roof_type):
     """
     Uses Gemini to get solar panel recommendations.
     """
-    # 4. Use the 'gemini-1.5-flash' model
+    # Using the 'gemini-1.5-flash' model
     model = genai.GenerativeModel('models/gemini-pro-latest')
 
     prompt = f"""
@@ -72,25 +72,25 @@ def get_solar_analysis(address, lat, lon, energy_kwh, roof_type):
         
     except Exception as e:
         current_app.logger.error(f"Gemini analysis failed: {e}")
-        # 5. Re-raise the error so the route can catch it
+        # Re-raise the error so the route can catch it
         raise e 
 
 def get_ar_layout(image_url, roof_type):
     """
     Uses Gemini to suggest a 3D layout for AR.
     """
-    # 6. Use the 'gemini-1.5-flash' model
+    # Using the 'gemini-1.5-flash' model
     model = genai.GenerativeModel('models/gemini-2.5-flash-image')
     
     try:
-        # 7. Download the image from the URL
+        # Download the image from the URL
         image_response = requests.get(image_url)
         image_response.raise_for_status() # Raise error if download fails
         
-        # 8. Open the image from the downloaded bytes
+        # Open the image from the downloaded bytes
         img = Image.open(io.BytesIO(image_response.content))
 
-        # 9. Create the text part of the prompt
+        #  Create the text part of the prompt
         text_prompt = f"""
         Analyze this roof image ({roof_type} type).
         Identify the largest, flattest, most sun-facing roof plane suitable for solar panels.
@@ -116,7 +116,7 @@ def get_ar_layout(image_url, roof_type):
         JSON:
         """
         
-        # 10. Send BOTH the text and the image to the model
+        # Send BOTH the text and the image to the model
         response = model.generate_content([text_prompt, img])
         
         json_text = response.text.strip().replace("```json", "").replace("```", "")
@@ -146,5 +146,5 @@ def get_ar_layout(image_url, roof_type):
         
     except Exception as e:
         current_app.logger.error(f"Gemini AR layout failed: {e}")
-        # 11. Re-raise the error so the route can catch it
+        # Re-raise the error so the route can catch it
         raise e
