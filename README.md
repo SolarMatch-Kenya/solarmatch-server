@@ -1,101 +1,134 @@
 # SolarMatch Server
 
-This is the backend for the SolarMatch application. SolarMatch-KE is an AI-Powered Solar Suitability and Adoption Platform.
-We help homeowners, businesses, and communities transition to clean energy through data-driven insights.
+## Project Overview
 
-We are empowering Kenya to go solar — one rooftop at a time.
-
-It provides a RESTful API to support the frontend application, handling user authentication, data processing, and interactions with the database and AI services.
+The SolarMatch server is the backend component of the SolarMatch platform, an AI-powered application for solar suitability analysis and adoption. It provides a robust RESTful API that serves as the backbone for the frontend client, handling business logic, data persistence, and integration with third-party services.
 
 ## Features
 
-- **RESTful API:** A well-structured API for all frontend operations.
-- **User Management:** Secure user registration, login, and profile management.
-- **Data Analysis:** Processes and analyzes data to provide solar suitability scores and other insights.
-- **AI Integration:** Connects with Google's Gemini API to power the "Sunny" chatbot.
-- **Database Management:** Uses SQLAlchemy and Alembic for database operations and migrations.
-- **Installer Management:** Functionality for solar installers to manage their profiles and connect with homeowners.
+- **RESTful API:** A comprehensive and well-structured API for all frontend operations.
+- **User Management:** Secure user authentication, authorization, and profile management using JWT.
+- **Data Analysis:** Asynchronous processing and analysis of geospatial data to generate solar suitability scores and related insights.
+- **AI Integration:** Seamless integration with Google's Gemini API to power the "Sunny" conversational AI assistant.
+- **Database Management:** Employs SQLAlchemy ORM and Alembic for database schema management and migrations.
+- **Installer Marketplace:** Functionality for solar installation companies to manage their service profiles and connect with potential customers.
 
 ## Tech Stack
 
-- **Flask:** A lightweight WSGI web application framework in Python.
-- **Flask-RESTful:** An extension for Flask that adds support for quickly building REST APIs.
-- **SQLAlchemy:** A SQL toolkit and Object-Relational Mapper (ORM) for Python.
-- **Alembic:** A lightweight database migration tool for usage with the SQLAlchemy.
-- **Flask-JWT-Extended:** An extension for Flask that adds support for JWTs.
-- **Flask-Bcrypt:** A Flask extension for hashing passwords with Bcrypt.
-- **Gunicorn:** A Python WSGI HTTP Server for UNIX.
-- **PostgreSQL/SQLite:** Relational databases for data storage.
-- **Google Gemini API:** For generative AI capabilities.
-- **Cloudinary:** For cloud-based image and video management.
+- **Framework:** Flask
+- **API:** Flask-RESTful
+- **ORM:** SQLAlchemy
+- **Database Migrations:** Alembic
+- **Authentication:** Flask-JWT-Extended
+- **Password Hashing:** Flask-Bcrypt
+- **WSGI Server:** Gunicorn
+- **Database:** PostgreSQL (production), SQLite (development)
+- **AI:** Google Gemini API
+- **Cloud Services:** Cloudinary for media management
 
-## Getting Started
+## Project Structure
+
+```
+/solarmatch-server
+├── app.py              # Flask application factory and entry point
+├── config.py           # Application configuration settings
+├── requirements.txt    # Python package dependencies
+├── wsgi.py             # WSGI entry point for Gunicorn
+├── .env.example        # Example environment variables
+├── instance/           # Instance-specific data (e.g., SQLite DB)
+│   └── solarmatch.db
+├── models/             # SQLAlchemy data models
+│   ├── __init__.py
+│   ├── user.py
+│   ├── analysis.py
+│   └── ...
+├── routes/             # API route definitions
+│   ├── __init__.py
+│   ├── auth_routes.py
+│   ├── admin_routes.py
+│   └── ...
+├── sevices/           # Business logic and external service integrations
+│   └── gemini_service.py
+├── tasks/              # Celery task definitions for background processing
+│   └── ...
+├── migrations/         # Alembic database migration scripts
+│   └── ...
+└── utils/              # Utility functions and helpers
+    └── ...
+```
+
+## Installation and Setup
 
 ### Prerequisites
 
-- Python 3.8+ and pip installed on your machine.
-- A PostgreSQL or SQLite database.
+- Python 3.8+
+- PostgreSQL or SQLite
 
-### Installation
+### Setup
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/SolarMatch-Kenya/solarmatch-server.git
-   ```
-2. Navigate to the server directory:
-   ```bash
-   cd solarmatch/solarmatch-server
-   ```
-3. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
-4. Install the dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-5. Create a `.env` file and add the necessary environment variables.
-### Running the Application
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/SolarMatch-Kenya/solarmatch-server.git
+    cd solarmatch/solarmatch-server
+    ```
 
-To start the development server, run:
+2.  **Create and activate a virtual environment:**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate
+    ```
+
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  **Configure environment variables:**
+    Create a `.env` file based on `.env.example` and populate it with the necessary credentials and configuration parameters.
+
+## Running the Application
+
+To start the development server, execute:
 
 ```bash
 flask run
 ```
 
-The API will be available at `http://127.0.0.1:5000`.
+The API will be accessible at `http://127.0.0.1:5000`. For production deployments, use the Gunicorn WSGI server:
+
+```bash
+gunicorn wsgi:app
+```
+
+## Database Migrations
+
+The application utilizes Alembic for managing database schema migrations.
+
+-   **To apply migrations:**
+    ```bash
+    flask db upgrade
+    ```
+
+-   **To generate a new migration:**
+    ```bash
+    flask db migrate -m "Descriptive migration message"
+    ```
 
 ## API Endpoints
 
-The API provides the following main endpoints:
+The API is organized into modular blueprints within the `routes` directory. Key endpoints include:
 
-- `/auth`: User authentication (login, registration).
-- `/users`: User profile management.
-- `/analysis`: Solar analysis and suitability scores.
-- `/installers`: Installer profiles and marketplace.
-- `/ai`: AI-powered chatbot.
+-   `/auth`: User authentication (login, registration, token refresh)
+-   `/users`: User profile and data management
+-   `/analysis`: Solar analysis report generation and retrieval
+-   `/installers`: Installer profile and service management
+-   `/ai`: Conversational AI endpoints
 
-For a detailed list of all endpoints, please refer to the source code in the `routes` directory.
-
-## Database
-
-The application uses SQLAlchemy as an ORM and Alembic for database migrations. To apply the latest migrations, run:
-
-```bash
-flask db upgrade
-```
-
-To create a new migration, run:
-
-```bash
-flask db migrate -m "Your migration message"
-```
+For a comprehensive list of all available routes and their specifications, please refer to the source code in the `routes` directory.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a pull request or open an issue.
-
+Contributions are welcome. Please adhere to the existing code style and submit pull requests for any enhancements or bug fixes.
 ## Authors
 
 - [James Kariuki](https://github.com/chiznox6)
