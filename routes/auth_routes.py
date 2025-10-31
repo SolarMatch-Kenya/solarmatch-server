@@ -228,13 +228,46 @@ class AddInstallerResource(Resource):
         db.session.add(user)
         db.session.commit()
 
-        # TODO: send installer email with credentials
-        print(f"Installer credentials for {email} -> Username: {user_name}, Password: {temp_password}")
+        try:
+            msg = Message(
+                subject="Welcome to SolarMatch - Your Installer Account",
+                recipients=[email],
+            )
+            msg.html = f"""
+            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                <p>Hello {full_name},</p>
+                <p>Welcome to SolarMatch! An admin has created an installer account for you.</p>
+                <p>Here are your login credentials. You will be required to <strong>change your password</strong> immediately upon your first login.</p>
+                <p style="font-size: 16px; margin: 20px 0;">
+                    <strong>Username:</strong> {user_name}<br>
+                    <strong>Temporary Password:</strong> {temp_password}
+                </p>
+                <p>You can log in at the SolarMatch portal.</p>
+                <p>Best regards,<br>The SolarMatch Kenya Team</p>
+            </div>
+            """
+            
+            # Send the email
+            mail.send(msg)
+            print(f"--- Installer welcome email sent to {email} ---")
 
-        return {
-            "message": "Installer added successfully and credentials sent via email",
-            "user_name": user_name
-        }, 201
+            # --- Commit the user to DB ONLY if email was successful ---
+            db.session.add(user)
+            db.session.commit()
+
+            return {
+                "message": "Installer added successfully and credentials sent via email",
+                "user_name": user_name
+            }, 201
+
+        except Exception as e:
+            # --- Rollback the session if email fails ---
+            db.session.rollback()
+            print(f"!!! FAILED TO SEND INSTALLER EMAIL to {email}: {e} !!!")
+            # Return an error to the admin
+            return {
+                "message": f"Failed to send email. User not created. Error: {e}"
+            }, 500
 
 
 # --- Register all routes ---

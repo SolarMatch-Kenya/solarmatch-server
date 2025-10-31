@@ -12,7 +12,7 @@ from routes.password_routes import password_bp
 from routes.installer_routes import installer_bp
 from routes.contact_routes import contact_bp
 
-def create_app(config_class=Config):
+def create_app(config_class=Config, config_override=None):
     app = Flask(__name__)
 
     CORS(app, resources={
@@ -25,6 +25,8 @@ def create_app(config_class=Config):
         }
     })
     app.config.from_object(config_class)
+    if config_override:
+        app.config.update(config_override)
 
     # Initialize extensions
     db.init_app(app)
